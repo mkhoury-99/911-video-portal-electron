@@ -3,8 +3,18 @@ import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 
+/** Paths that work in both dev (preview) and packaged production on all platforms (including Windows). */
+function getAppPaths() {
+  const appPath = app.getAppPath()
+  return {
+    preload: join(appPath, 'out', 'preload', 'index.js'),
+    renderer: join(appPath, 'out', 'renderer', 'index.html')
+  }
+}
+
 function createWindow() {
-  // Create the browser window.
+  const { preload, renderer } = getAppPaths()
+
   const mainWindow = new BrowserWindow({
     width: 900,
     height: 670,
@@ -12,7 +22,7 @@ function createWindow() {
     autoHideMenuBar: true,
     ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
-      preload: join(__dirname, '../preload/index.js'),
+      preload,
       sandbox: false
     }
   })
@@ -31,7 +41,7 @@ function createWindow() {
   if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
     mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])
   } else {
-    mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
+    mainWindow.loadFile(renderer)
   }
 }
 

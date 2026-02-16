@@ -1,14 +1,17 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Table } from "antd";
 import moment from "moment-timezone";
-import { Calendar as CalendarIcon, RefreshCw } from "lucide-react";
+import { Calendar as CalendarIcon, Download, RefreshCw } from "lucide-react";
 import { Button } from "../ui/button";
 import { Heading } from "../ui/heading";
 import { Text } from "../ui/text";
 import { Popover, PopoverTrigger, PopoverContent } from "../ui/popover";
 import { Calendar } from "../ui/calendar";
 import { cn } from "../../lib/utils";
-import { listCallsHistoryVideo } from "../../api/CustomerApi";
+import {
+  listCallsHistoryVideo,
+  downloadCallsHistoryVideoCsv,
+} from "../../api/CustomerApi";
 
 const MAX_RANGE_DAYS = 31;
 const EST_TIMEZONE = "America/New_York";
@@ -56,6 +59,7 @@ export default function CallsHistory() {
   const [calls, setCalls] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [downloadingCsv, setDownloadingCsv] = useState(false);
   const [error, setError] = useState(null);
   const [date, setDate] = useState(() => getTodayDateRange());
   const [pagination, setPagination] = useState({
@@ -305,6 +309,47 @@ export default function CallsHistory() {
     setDate(getTodayDateRange());
   };
 
+  const handleDownloadCsv = async () => {
+    try {
+      setDownloadingCsv(true);
+      const { dateFrom, dateTo } = getDateParams();
+      const response = await downloadCallsHistoryVideoCsv({
+        startDate: dateFrom,
+        endDate: dateTo ?? dateFrom,
+      });
+
+      const csvBlob = response?.data;
+      if (!(csvBlob instanceof Blob)) {
+        throw new Error("Invalid CSV download response");
+      }
+
+      const fallbackFileName = `video_calls_${moment().format(
+        "YYYY-MM-DD_HH-mm-ss"
+      )}.csv`;
+      const contentDisposition = response?.headers?.["content-disposition"] ?? "";
+      const filenameMatch =
+        contentDisposition.match(/filename\*=UTF-8''([^;]+)/i) ||
+        contentDisposition.match(/filename="?([^";]+)"?/i);
+      const fileName = filenameMatch
+        ? decodeURIComponent(filenameMatch[1])
+        : fallbackFileName;
+
+      const url = window.URL.createObjectURL(csvBlob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", fileName);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error(err);
+      window.alert("Failed to download CSV. Please try again.");
+    } finally {
+      setDownloadingCsv(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -392,6 +437,16 @@ export default function CallsHistory() {
             className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`}
           />
           Refresh
+        </Button>
+
+        <Button
+          variant="outline"
+          className="flex items-center gap-2 cursor-pointer"
+          onClick={handleDownloadCsv}
+          disabled={downloadingCsv}
+        >
+          <Download className="h-4 w-4" />
+          {downloadingCsv ? "Downloading..." : "Download CSV"}
         </Button>
       </div>
 

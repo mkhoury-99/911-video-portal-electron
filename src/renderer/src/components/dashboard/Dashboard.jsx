@@ -30,6 +30,7 @@ import LanguagesList from "./LanguagesList";
 import CallsHistory from "./CallsHistory";
 import Reports from "./Reports";
 import ProfileManagement from "./ProfileManagement";
+import logo from "../../assets/logo.png";
 
 function VideoIcon() {
   return (
@@ -196,13 +197,20 @@ export default function Dashboard() {
   const sidebar = (closeMobileSidebar) => (
     <Sidebar>
       <SidebarHeader>
+        <img
+          src={logo}
+          width={200}
+          alt="911 Interpreters Logo"
+          className="px-2"
+        />
         <div className="flex items-center gap-3 px-2 py-4">
           {/* <div className="flex size-10 items-center justify-center rounded-lg bg-blue-600 text-white font-semibold">
             {userInitials}
           </div> */}
+
           <div className="min-w-0 flex-1">
-            <div className="text-sm font-medium text-zinc-950 truncate">
-              {user?.email || "Video Portal"}
+            <div className="text-lg font-medium text-zinc-950 truncate">
+              {"Video Portal"}
             </div>
             <div className="text-xs text-zinc-500">
               {sessionStorage.getItem("customer_name") || "Video Portal"}

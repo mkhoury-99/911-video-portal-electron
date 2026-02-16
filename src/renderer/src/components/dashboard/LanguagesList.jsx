@@ -1,39 +1,44 @@
-import { useState, useEffect } from 'react'
-import { Card } from '../ui/card'
-import { Input, InputGroup } from '../ui/input'
-import { Button } from '../ui/button'
-import { Heading } from '../ui/heading'
-import { Text } from '../ui/text'
-import { listLanguages, getAvailableLanguages, getTopLanguages } from '../../api/CustomerApi'
-import { useZoomVideo } from '../../hooks/useZoomVideo'
+import { useState, useEffect } from "react";
+import { Card } from "../ui/card";
+import { Input, InputGroup } from "../ui/input";
+import { Button } from "../ui/button";
+import { Heading } from "../ui/heading";
+import { Text } from "../ui/text";
+import {
+  listLanguages,
+  getAvailableLanguages,
+  getTopLanguages,
+} from "../../api/CustomerApi";
+import { useZoomVideo } from "../../hooks/useZoomVideo";
+import { echo } from "../../lib/echo";
 
 /** Trim _Video and _Audio suffix from language name before handling. */
 function trimLanguageSuffix(name) {
-  if (typeof name !== 'string') return name ?? ''
+  if (typeof name !== "string") return name ?? "";
   return (
     name
-      .replace(/_Video$/i, '')
-      .replace(/_Audio$/i, '')
+      .replace(/_Video$/i, "")
+      .replace(/_Audio$/i, "")
       .trim() || name
-  )
+  );
 }
 
-function VideoIcon({ disabled, className = '' }) {
-  const fill = disabled ? '#9ca3af' : 'currentColor'
+function VideoIcon({ disabled, className = "" }) {
+  const fill = disabled ? "#9ca3af" : "currentColor";
   return (
     <svg viewBox="0 0 20 20" fill={fill} className={`size-5 ${className}`}>
       <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z" />
     </svg>
-  )
+  );
 }
 
-function PhoneIcon({ disabled, className = '' }) {
-  const fill = disabled ? '#9ca3af' : 'currentColor'
+function PhoneIcon({ disabled, className = "" }) {
+  const fill = disabled ? "#9ca3af" : "currentColor";
   return (
     <svg viewBox="0 0 20 20" fill={fill} className={`size-5 ${className}`}>
       <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
     </svg>
-  )
+  );
 }
 
 function SearchIcon() {
@@ -45,7 +50,7 @@ function SearchIcon() {
         clipRule="evenodd"
       />
     </svg>
-  )
+  );
 }
 
 function RefreshIcon({ spinning }) {
@@ -53,7 +58,7 @@ function RefreshIcon({ spinning }) {
     <svg
       viewBox="0 0 20 20"
       fill="currentColor"
-      className={`size-5 ${spinning ? 'animate-spin' : ''}`}
+      className={`size-5 ${spinning ? "animate-spin" : ""}`}
     >
       <path
         fillRule="evenodd"
@@ -61,277 +66,291 @@ function RefreshIcon({ spinning }) {
         clipRule="evenodd"
       />
     </svg>
-  )
+  );
 }
 
 // Shared availability logic and button styles for video/audio (used in top languages and list)
 function getAvailability(lang, isReady) {
-  const videoDisabled = (lang?.opted_in_count_video ?? 0) === 0 || !isReady
+  const videoDisabled = (lang?.opted_in_count_video ?? 0) === 0 || !isReady;
   const audioDisabled =
     (lang?.opted_in_count_audio ?? 0) === 0 ||
     !isReady ||
-    (lang?.language && lang.language.includes('ASL'))
-  return { videoDisabled, audioDisabled }
+    (lang?.language && lang.language.includes("ASL"));
+  return { videoDisabled, audioDisabled };
 }
 
 const CALL_BUTTON_ENABLED_CLASS =
-  'bg-green-600 text-white hover:bg-green-700 active:scale-95 transition-all duration-200 shadow-sm hover:shadow-md'
-const CALL_BUTTON_DISABLED_CLASS = 'border-zinc-300 bg-white text-zinc-400 cursor-not-allowed'
+  "bg-green-600 text-white hover:bg-green-700 active:scale-95 transition-all duration-200 shadow-sm hover:shadow-md";
+const CALL_BUTTON_DISABLED_CLASS =
+  "border-zinc-300 bg-white text-zinc-400 cursor-not-allowed";
 const CALL_BUTTON_BASE_CLASS =
-  'relative flex items-center justify-center disabled:opacity-60 disabled:cursor-not-allowed'
+  "relative flex items-center justify-center disabled:opacity-60 disabled:cursor-not-allowed";
 
 export default function LanguagesList() {
-  const [languages, setLanguages] = useState([])
-  const [filteredLanguages, setFilteredLanguages] = useState([])
-  const [searchQuery, setSearchQuery] = useState('')
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-  const [currentPage, setCurrentPage] = useState(1)
-  const [itemsPerPage] = useState(25)
-  const [topLanguages, setTopLanguages] = useState([])
-  const { startVideoCall, isReady } = useZoomVideo()
+  const [languages, setLanguages] = useState([]);
+  const [filteredLanguages, setFilteredLanguages] = useState([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(25);
+  const [topLanguages, setTopLanguages] = useState([]);
+  const { startVideoCall, isReady } = useZoomVideo();
 
   /** Silent refresh: only fetch availability and merge into current languages (no loading state). */
   const refreshAvailability = async () => {
     try {
-      const availRes = await getAvailableLanguages()
-      const availRaw = availRes?.data ?? availRes?.items ?? availRes
-      const availList = Array.isArray(availRaw) ? availRaw : []
-      const availabilityByLanguage = {}
+      const availRes = await getAvailableLanguages();
+      const availRaw = availRes?.data ?? availRes?.items ?? availRes;
+      const availList = Array.isArray(availRaw) ? availRaw : [];
+      const availabilityByLanguage = {};
       for (const item of availList) {
-        const raw = typeof item === 'object' && item !== null ? item : {}
-        const rawLang = typeof item === 'string' ? item : (item?.language ?? '')
-        const baseName = trimLanguageSuffix(rawLang)
-        if (!baseName) continue
+        const raw = typeof item === "object" && item !== null ? item : {};
+        const rawLang = typeof item === "string" ? item : item?.language ?? "";
+        const baseName = trimLanguageSuffix(rawLang);
+        if (!baseName) continue;
         if (!availabilityByLanguage[baseName]) {
           availabilityByLanguage[baseName] = {
             opted_in_count_video: 0,
-            opted_in_count_audio: 0
-          }
+            opted_in_count_audio: 0,
+          };
         }
-        const v = Number(raw.opted_in_count_video ?? raw.optedInCountVideo ?? 0) || 0
-        const a = Number(raw.opted_in_count_audio ?? raw.optedInCountAudio ?? 0) || 0
+        const v =
+          Number(raw.opted_in_count_video ?? raw.optedInCountVideo ?? 0) || 0;
+        const a =
+          Number(raw.opted_in_count_audio ?? raw.optedInCountAudio ?? 0) || 0;
         availabilityByLanguage[baseName].opted_in_count_video = Math.max(
           availabilityByLanguage[baseName].opted_in_count_video ?? 0,
           v
-        )
+        );
         availabilityByLanguage[baseName].opted_in_count_audio = Math.max(
           availabilityByLanguage[baseName].opted_in_count_audio ?? 0,
           a
-        )
+        );
       }
       setLanguages((prev) =>
         prev.map((lang) => {
-          const baseName = trimLanguageSuffix(lang.language)
-          const avail = availabilityByLanguage[baseName]
+          const baseName = trimLanguageSuffix(lang.language);
+          const avail = availabilityByLanguage[baseName];
           return {
             ...lang,
             opted_in_count_video: avail?.opted_in_count_video ?? 0,
-            opted_in_count_audio: avail?.opted_in_count_audio ?? 0
-          }
+            opted_in_count_audio: avail?.opted_in_count_audio ?? 0,
+          };
         })
-      )
+      );
       // Also update top languages with fresh availability
       setTopLanguages((prev) =>
         prev.map((lang) => {
-          const baseName = trimLanguageSuffix(lang.language)
-          const avail = availabilityByLanguage[baseName]
+          const baseName = trimLanguageSuffix(lang.language);
+          const avail = availabilityByLanguage[baseName];
           return {
             ...lang,
             opted_in_count_video: avail?.opted_in_count_video ?? 0,
-            opted_in_count_audio: avail?.opted_in_count_audio ?? 0
-          }
+            opted_in_count_audio: avail?.opted_in_count_audio ?? 0,
+          };
         })
-      )
+      );
     } catch (err) {
-      console.error('Background languages availability refresh failed:', err)
+      console.error("Background languages availability refresh failed:", err);
     }
-  }
+  };
 
   useEffect(() => {
-    let intervalId
-    loadLanguages().then(() => {
-      intervalId = setInterval(refreshAvailability, 60_000)
-    })
+    loadLanguages();
+  }, []);
+
+  useEffect(() => {
+    const channel = echo.channel("video-status");
+    channel.listen(".contact_center.user_status_changed", () => {
+      console.log("User status changed");
+      refreshAvailability();
+    });
+
     return () => {
-      if (intervalId) clearInterval(intervalId)
-    }
-  }, [])
+      echo.leave("video-status");
+    };
+  }, []);
 
   // Load top languages from API and fetch availability separately
   useEffect(() => {
     const loadTopLanguages = async () => {
       try {
         // Fetch top languages (only returns language names)
-        const topRes = await getTopLanguages()
-        const topRaw = topRes?.data ?? topRes?.items ?? topRes
-        const topList = Array.isArray(topRaw) ? topRaw : []
+        const topRes = await getTopLanguages();
+        const topRaw = topRes?.data ?? topRes?.items ?? topRes;
+        const topList = Array.isArray(topRaw) ? topRaw : [];
         const topLangNames = topList
-          .map((item) => item?.language ?? item?.name ?? '')
-          .filter(Boolean)
+          .map((item) => item?.language ?? item?.name ?? "")
+          .filter(Boolean);
 
         // Fetch availability data
-        const availRes = await getAvailableLanguages()
-        const availRaw = availRes?.data ?? availRes?.items ?? availRes
-        const availList = Array.isArray(availRaw) ? availRaw : []
+        const availRes = await getAvailableLanguages();
+        const availRaw = availRes?.data ?? availRes?.items ?? availRes;
+        const availList = Array.isArray(availRaw) ? availRaw : [];
 
         // Build availability lookup
-        const availabilityByLanguage = {}
+        const availabilityByLanguage = {};
         for (const item of availList) {
-          const raw = typeof item === 'object' && item !== null ? item : {}
-          const rawLang = typeof item === 'string' ? item : (item?.language ?? '')
-          const baseName = trimLanguageSuffix(rawLang)
-          if (!baseName) continue
+          const raw = typeof item === "object" && item !== null ? item : {};
+          const rawLang =
+            typeof item === "string" ? item : item?.language ?? "";
+          const baseName = trimLanguageSuffix(rawLang);
+          if (!baseName) continue;
           if (!availabilityByLanguage[baseName]) {
             availabilityByLanguage[baseName] = {
               opted_in_count_video: 0,
-              opted_in_count_audio: 0
-            }
+              opted_in_count_audio: 0,
+            };
           }
-          const v = Number(raw.opted_in_count_video ?? raw.optedInCountVideo ?? 0) || 0
-          const a = Number(raw.opted_in_count_audio ?? raw.optedInCountAudio ?? 0) || 0
+          const v =
+            Number(raw.opted_in_count_video ?? raw.optedInCountVideo ?? 0) || 0;
+          const a =
+            Number(raw.opted_in_count_audio ?? raw.optedInCountAudio ?? 0) || 0;
           availabilityByLanguage[baseName].opted_in_count_video = Math.max(
             availabilityByLanguage[baseName].opted_in_count_video ?? 0,
             v
-          )
+          );
           availabilityByLanguage[baseName].opted_in_count_audio = Math.max(
             availabilityByLanguage[baseName].opted_in_count_audio ?? 0,
             a
-          )
+          );
         }
 
         // Merge top languages with availability
         const merged = topLangNames.map((name) => ({
           language: name,
-          ...(availabilityByLanguage[name] ?? {
+          ...(availabilityByLanguage[trimLanguageSuffix(name)] ?? {
             opted_in_count_video: 0,
-            opted_in_count_audio: 0
-          })
-        }))
+            opted_in_count_audio: 0,
+          }),
+        }));
 
-        setTopLanguages(merged)
+        setTopLanguages(merged);
       } catch (err) {
-        console.error('Failed to load top languages:', err)
-        setTopLanguages([])
+        console.error("Failed to load top languages:", err);
+        setTopLanguages([]);
       }
-    }
+    };
 
-    loadTopLanguages()
-  }, [])
+    loadTopLanguages();
+  }, []);
 
   useEffect(() => {
-    if (searchQuery.trim() === '') {
-      setFilteredLanguages(languages)
+    if (searchQuery.trim() === "") {
+      setFilteredLanguages(languages);
     } else {
       const filtered = languages.filter((lang) =>
         lang.language.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-      setFilteredLanguages(filtered)
+      );
+      setFilteredLanguages(filtered);
     }
-    setCurrentPage(1) // Reset to first page when search changes
-  }, [searchQuery, languages])
+    setCurrentPage(1); // Reset to first page when search changes
+  }, [searchQuery, languages]);
 
   // Calculate pagination
-  const totalPages = Math.ceil(filteredLanguages.length / itemsPerPage)
-  const startIndex = (currentPage - 1) * itemsPerPage
-  const endIndex = startIndex + itemsPerPage
-  const paginatedLanguages = filteredLanguages.slice(startIndex, endIndex)
+  const totalPages = Math.ceil(filteredLanguages.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedLanguages = filteredLanguages.slice(startIndex, endIndex);
 
   /** First load all languages (list-languages), then load available by video/audio; trim _Video/_Audio before use. */
   const loadLanguages = async () => {
     try {
-      setLoading(true)
-      setError(null)
+      setLoading(true);
+      setError(null);
 
-      const listRes = await listLanguages()
-      const listRaw = listRes?.data ?? listRes?.items ?? listRes
-      const list = Array.isArray(listRaw) ? listRaw : []
+      const listRes = await listLanguages();
+      const listRaw = listRes?.data ?? listRes?.items ?? listRes;
+      const list = Array.isArray(listRaw) ? listRaw : [];
       const allNames = list.map((item) =>
-        typeof item === 'string' ? item : (item?.language ?? item?.name ?? '')
-      )
-      const allLanguageNames = allNames.filter(Boolean)
+        typeof item === "string" ? item : item?.language ?? item?.name ?? ""
+      );
+      const allLanguageNames = allNames.filter(Boolean);
 
-      const availRes = await getAvailableLanguages()
-      const availRaw = availRes?.data ?? availRes?.items ?? availRes
-      const availList = Array.isArray(availRaw) ? availRaw : []
-      const availabilityByLanguage = {}
+      const availRes = await getAvailableLanguages();
+      const availRaw = availRes?.data ?? availRes?.items ?? availRes;
+      const availList = Array.isArray(availRaw) ? availRaw : [];
+      const availabilityByLanguage = {};
       for (const item of availList) {
-        const raw = typeof item === 'object' && item !== null ? item : {}
-        const rawLang = typeof item === 'string' ? item : (item?.language ?? '')
-        const baseName = trimLanguageSuffix(rawLang)
-        if (!baseName) continue
+        const raw = typeof item === "object" && item !== null ? item : {};
+        const rawLang = typeof item === "string" ? item : item?.language ?? "";
+        const baseName = trimLanguageSuffix(rawLang);
+        if (!baseName) continue;
         if (!availabilityByLanguage[baseName]) {
           availabilityByLanguage[baseName] = {
             opted_in_count_video: 0,
-            opted_in_count_audio: 0
-          }
+            opted_in_count_audio: 0,
+          };
         }
         // API always sends _Video suffix for each language; one row has both video and audio counts
-        const v = Number(raw.opted_in_count_video ?? raw.optedInCountVideo ?? 0) || 0
-        const a = Number(raw.opted_in_count_audio ?? raw.optedInCountAudio ?? 0) || 0
+        const v =
+          Number(raw.opted_in_count_video ?? raw.optedInCountVideo ?? 0) || 0;
+        const a =
+          Number(raw.opted_in_count_audio ?? raw.optedInCountAudio ?? 0) || 0;
         availabilityByLanguage[baseName].opted_in_count_video = Math.max(
           availabilityByLanguage[baseName].opted_in_count_video ?? 0,
           v
-        )
+        );
         availabilityByLanguage[baseName].opted_in_count_audio = Math.max(
           availabilityByLanguage[baseName].opted_in_count_audio ?? 0,
           a
-        )
+        );
       }
 
       const merged = allLanguageNames.map((name) => ({
         language: name,
-        ...(availabilityByLanguage[name] ?? {
+        ...(availabilityByLanguage[trimLanguageSuffix(name)] ?? {
           opted_in_count_video: 0,
-          opted_in_count_audio: 0
-        })
-      }))
+          opted_in_count_audio: 0,
+        }),
+      }));
 
-      setLanguages(merged)
-      setFilteredLanguages(merged)
+      setLanguages(merged);
+      setFilteredLanguages(merged);
       // Also update top languages with fresh availability
       setTopLanguages((prev) =>
         prev.map((lang) => {
-          const baseName = trimLanguageSuffix(lang.language)
-          const avail = availabilityByLanguage[baseName]
+          const baseName = trimLanguageSuffix(lang.language);
+          const avail = availabilityByLanguage[baseName];
           return {
             ...lang,
             opted_in_count_video: avail?.opted_in_count_video ?? 0,
-            opted_in_count_audio: avail?.opted_in_count_audio ?? 0
-          }
+            opted_in_count_audio: avail?.opted_in_count_audio ?? 0,
+          };
         })
-      )
+      );
     } catch (err) {
-      setError('Failed to load languages. Please try again.')
-      console.error(err)
+      setError("Failed to load languages. Please try again.");
+      console.error(err);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
-  const handleVideoCall = async (language, callType = 'video') => {
+  const handleVideoCall = async (language, callType = "video") => {
     if (!isReady) {
-      alert('Video client is not ready yet. Please wait a moment.')
-      return
+      alert("Video client is not ready yet. Please wait a moment.");
+      return;
     }
 
     // TODO: Get entryId from API based on language
-    const entryId = '4PUouPs7RXSNQJYW6W896Q'
+    const entryId = "4PUouPs7RXSNQJYW6W896Q";
 
     try {
-      await startVideoCall(entryId, language, 'Customer', callType)
+      await startVideoCall(entryId, language, "Customer", callType);
     } catch (err) {
-      console.error('Failed to start video call:', err)
-      alert('Failed to start video call. Please try again.')
+      console.error("Failed to start video call:", err);
+      alert("Failed to start video call. Please try again.");
     }
-  }
+  };
 
   if (loading && languages.length === 0) {
     return (
       <div className="flex items-center justify-center py-12">
         <Text>Loading languages...</Text>
       </div>
-    )
+    );
   }
 
   if (error) {
@@ -345,7 +364,7 @@ export default function LanguagesList() {
           Retry
         </Button>
       </div>
-    )
+    );
   }
 
   return (
@@ -366,7 +385,7 @@ export default function LanguagesList() {
           title="Refresh languages"
         >
           <RefreshIcon spinning={loading} />
-          <span>{loading ? 'Refreshing...' : 'Refresh'}</span>
+          <span>{loading ? "Refreshing..." : "Refresh"}</span>
         </Button>
       </div>
 
@@ -390,7 +409,10 @@ export default function LanguagesList() {
           </Heading>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6 gap-2">
             {topLanguages.map((lang) => {
-              const { videoDisabled, audioDisabled } = getAvailability(lang, isReady)
+              const { videoDisabled, audioDisabled } = getAvailability(
+                lang,
+                isReady
+              );
               return (
                 <Card key={lang.language} className="border-zinc-200 px-3 py-2">
                   <div className="flex flex-col items-center justify-between gap-2 min-w-0">
@@ -402,36 +424,42 @@ export default function LanguagesList() {
                         variant="outline"
                         size="default"
                         disabled={videoDisabled}
-                        onClick={() => handleVideoCall(lang.language, 'video')}
+                        onClick={() => handleVideoCall(lang.language, "video")}
                         className={`p-2 ${CALL_BUTTON_BASE_CLASS} ${
-                          videoDisabled ? CALL_BUTTON_DISABLED_CLASS : CALL_BUTTON_ENABLED_CLASS
+                          videoDisabled
+                            ? CALL_BUTTON_DISABLED_CLASS
+                            : CALL_BUTTON_ENABLED_CLASS
                         }`}
                       >
                         <VideoIcon
                           disabled={videoDisabled}
-                          className={videoDisabled ? '' : 'text-white'}
+                          className={videoDisabled ? "" : "text-white"}
                         />
                       </Button>
-                      {!lang.language?.includes('ASL') && (
+                      {!lang.language?.includes("ASL") && (
                         <Button
                           variant="outline"
                           size="default"
                           disabled={audioDisabled}
-                          onClick={() => handleVideoCall(lang.language, 'audio')}
+                          onClick={() =>
+                            handleVideoCall(lang.language, "audio")
+                          }
                           className={`p-2 ${CALL_BUTTON_BASE_CLASS} ${
-                            audioDisabled ? CALL_BUTTON_DISABLED_CLASS : CALL_BUTTON_ENABLED_CLASS
+                            audioDisabled
+                              ? CALL_BUTTON_DISABLED_CLASS
+                              : CALL_BUTTON_ENABLED_CLASS
                           }`}
                         >
                           <PhoneIcon
                             disabled={audioDisabled}
-                            className={audioDisabled ? '' : 'text-white'}
+                            className={audioDisabled ? "" : "text-white"}
                           />
                         </Button>
                       )}
                     </div>
                   </div>
                 </Card>
-              )
+              );
             })}
           </div>
         </section>
@@ -459,29 +487,38 @@ export default function LanguagesList() {
                   </div>
                   <div className="flex items-center gap-3">
                     {(() => {
-                      const { videoDisabled, audioDisabled } = getAvailability(lang, isReady)
+                      const { videoDisabled, audioDisabled } = getAvailability(
+                        lang,
+                        isReady
+                      );
                       return (
                         <>
                           <Button
                             variant="outline"
                             size="default"
                             disabled={videoDisabled}
-                            onClick={() => handleVideoCall(lang.language, 'video')}
+                            onClick={() =>
+                              handleVideoCall(lang.language, "video")
+                            }
                             className={`gap-2 px-4 py-2 ${CALL_BUTTON_BASE_CLASS} ${
-                              videoDisabled ? CALL_BUTTON_DISABLED_CLASS : CALL_BUTTON_ENABLED_CLASS
+                              videoDisabled
+                                ? CALL_BUTTON_DISABLED_CLASS
+                                : CALL_BUTTON_ENABLED_CLASS
                             }`}
                           >
                             <VideoIcon
                               disabled={videoDisabled}
-                              className={videoDisabled ? '' : 'text-white'}
+                              className={videoDisabled ? "" : "text-white"}
                             />
                           </Button>
-                          {!lang.language?.includes('ASL') && (
+                          {!lang.language?.includes("ASL") && (
                             <Button
                               variant="outline"
                               size="default"
                               disabled={audioDisabled}
-                              onClick={() => handleVideoCall(lang.language, 'audio')}
+                              onClick={() =>
+                                handleVideoCall(lang.language, "audio")
+                              }
                               className={`gap-2 px-4 py-2 ${CALL_BUTTON_BASE_CLASS} ${
                                 audioDisabled
                                   ? CALL_BUTTON_DISABLED_CLASS
@@ -490,12 +527,12 @@ export default function LanguagesList() {
                             >
                               <PhoneIcon
                                 disabled={audioDisabled}
-                                className={audioDisabled ? '' : 'text-white'}
+                                className={audioDisabled ? "" : "text-white"}
                               />
                             </Button>
                           )}
                         </>
-                      )
+                      );
                     })()}
                   </div>
                 </div>
@@ -506,14 +543,17 @@ export default function LanguagesList() {
             {totalPages > 1 && (
               <div className="flex items-center justify-between">
                 <Text className="text-sm text-zinc-500">
-                  Showing {startIndex + 1} to {Math.min(endIndex, filteredLanguages.length)} of{' '}
+                  Showing {startIndex + 1} to{" "}
+                  {Math.min(endIndex, filteredLanguages.length)} of{" "}
                   {filteredLanguages.length} languages
                 </Text>
                 <div className="flex items-center gap-2">
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                    onClick={() =>
+                      setCurrentPage((prev) => Math.max(1, prev - 1))
+                    }
                     disabled={currentPage === 1}
                     className="border-zinc-300 hover:bg-zinc-50 hover:border-zinc-400 active:scale-95 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed px-4 py-2"
                   >
@@ -525,7 +565,9 @@ export default function LanguagesList() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                    onClick={() =>
+                      setCurrentPage((prev) => Math.min(totalPages, prev + 1))
+                    }
                     disabled={currentPage === totalPages}
                     className="border-zinc-300 hover:bg-zinc-50 hover:border-zinc-400 active:scale-95 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed px-4 py-2"
                   >
@@ -538,5 +580,5 @@ export default function LanguagesList() {
         )}
       </div>
     </div>
-  )
+  );
 }

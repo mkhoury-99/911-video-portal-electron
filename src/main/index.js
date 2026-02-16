@@ -1,14 +1,14 @@
 import { app, shell, BrowserWindow, ipcMain } from 'electron'
-import { join } from 'path'
+import { join, resolve } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 
-/** Paths that work in both dev (preview) and packaged production on all platforms (including Windows). */
+/** Main process runs from out/main/index.js; app root is two levels up. */
 function getAppPaths() {
-  const appPath = app.getAppPath()
+  const appRoot = resolve(__dirname, '..', '..')
   return {
-    preload: join(appPath, 'out', 'preload', 'index.js'),
-    renderer: join(appPath, 'out', 'renderer', 'index.html')
+    preload: join(appRoot, 'out', 'preload', 'index.js'),
+    renderer: join(appRoot, 'out', 'renderer', 'index.html')
   }
 }
 
@@ -18,6 +18,8 @@ function createWindow() {
   const mainWindow = new BrowserWindow({
     width: 900,
     height: 670,
+    minWidth: 768,
+    minHeight: 1024,
     show: false,
     autoHideMenuBar: true,
     ...(process.platform === 'linux' ? { icon } : {}),

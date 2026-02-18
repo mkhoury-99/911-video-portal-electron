@@ -1,78 +1,90 @@
-import React, { useState, useEffect } from 'react'
-import { Button } from '../../components/ui/button'
-import { Field, Label, ErrorMessage } from '../../components/ui/fieldset'
-import { Heading } from '../../components/ui/heading'
-import { Input } from '../../components/ui/input'
-import { Text, TextLink } from '../../components/ui/text'
-import { AuthLayout } from '../../components/ui/auth-layout'
-import { useSearchParams, useNavigate } from 'react-router-dom'
-import { Formik, Form, useField } from 'formik'
-import * as Yup from 'yup'
-import { confirmForgotPassword } from '../../api/AuthApi'
+import React, { useState, useEffect } from "react";
+import { Button } from "../../components/ui/button";
+import { Field, Label, ErrorMessage } from "../../components/ui/fieldset";
+import { Heading } from "../../components/ui/heading";
+import { Input } from "../../components/ui/input";
+import { Text, TextLink } from "../../components/ui/text";
+import { AuthLayout } from "../../components/ui/auth-layout";
+import { useSearchParams, useNavigate } from "react-router-dom";
+import { Formik, Form, useField } from "formik";
+import * as Yup from "yup";
+import { confirmForgotPassword } from "../../api/AuthApi";
 
 // Custom form field component
 const FormField = ({ label, ...props }) => {
-  const [field, meta] = useField(props)
-  const hasError = meta.touched && meta.error
+  const [field, meta] = useField(props);
+  const hasError = meta.touched && meta.error;
 
   return (
     <Field>
       <Label>{label}</Label>
-      <Input {...field} {...props} className={hasError ? 'border-red-500' : ''} />
+      <Input
+        {...field}
+        {...props}
+        className={hasError ? "border-red-500" : ""}
+      />
       {hasError && <ErrorMessage>{meta.error}</ErrorMessage>}
     </Field>
-  )
-}
+  );
+};
 
 const ResetPasswordWrapper = () => {
-  const [searchParams] = useSearchParams()
-  const [isResetting, setIsResetting] = useState(false)
-  const [isSuccess, setIsSuccess] = useState(false)
-  const [error, setError] = useState('')
-  const navigate = useNavigate()
+  const [searchParams] = useSearchParams();
+  const [isResetting, setIsResetting] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
+  const [error, setError] = useState("");
+  const navigate = useNavigate();
 
-  const username = searchParams.get('username') || ''
+  const username = searchParams.get("username") || "";
 
   useEffect(() => {
     if (!username) {
-      navigate('/forgot-password', { replace: true })
+      navigate("/forgot-password", { replace: true });
     }
-  }, [username, navigate])
+  }, [username, navigate]);
 
   if (!username) {
-    return null
+    return null;
   }
 
   // Validation schema
   const validationSchema = Yup.object({
     otp: Yup.string()
-      .required('OTP is required')
-      .min(6, 'OTP must be 6 digits')
-      .max(6, 'OTP must be 6 digits'),
+      .required("OTP is required")
+      .min(6, "OTP must be 6 digits")
+      .max(6, "OTP must be 6 digits"),
     newPassword: Yup.string()
-      .min(8, 'Password must be at least 8 characters')
-      .required('New password is required'),
+      .min(8, "Password must be at least 8 characters")
+      .required("New password is required"),
     confirmPassword: Yup.string()
-      .oneOf([Yup.ref('newPassword'), null], 'Passwords must match')
-      .required('Please confirm your password')
-  })
+      .oneOf([Yup.ref("newPassword"), null], "Passwords must match")
+      .required("Please confirm your password"),
+  });
 
   const handleSubmit = async (values, { setSubmitting }) => {
     try {
-      setIsResetting(true)
-      setError('')
+      setIsResetting(true);
+      setError("");
 
-      await confirmForgotPassword(username, values.otp, values.newPassword, values.confirmPassword)
+      await confirmForgotPassword(
+        username,
+        values.otp,
+        values.newPassword,
+        values.confirmPassword
+      );
 
-      setIsSuccess(true)
+      setIsSuccess(true);
     } catch (err) {
-      console.error('Failed to reset password:', err)
-      setError(err.response?.data?.message || 'Failed to reset password. Please try again.')
+      console.error("Failed to reset password:", err);
+      setError(
+        err.response?.data?.message ||
+          "Failed to reset password. Please try again."
+      );
     } finally {
-      setIsResetting(false)
-      setSubmitting(false)
+      setIsResetting(false);
+      setSubmitting(false);
     }
-  }
+  };
 
   if (isSuccess) {
     return (
@@ -96,12 +108,12 @@ const ResetPasswordWrapper = () => {
           </div>
           <Heading>Password Reset Successful</Heading>
           <Text>Your password has been successfully reset.</Text>
-          <Button onClick={() => navigate('/login')} className="w-full">
+          <Button onClick={() => navigate("/login")} className="w-full">
             Back to Login
           </Button>
         </div>
       </AuthLayout>
-    )
+    );
   }
 
   return (
@@ -110,13 +122,15 @@ const ResetPasswordWrapper = () => {
         <Heading>Reset Password</Heading>
         <Text>Enter the OTP sent to your email and create a new password.</Text>
 
-        {error && <div className="text-red-500 text-sm text-center">{error}</div>}
+        {error && (
+          <div className="text-red-500 text-sm text-center">{error}</div>
+        )}
 
         <Formik
           initialValues={{
-            otp: '',
-            newPassword: '',
-            confirmPassword: ''
+            otp: "",
+            newPassword: "",
+            confirmPassword: "",
           }}
           validationSchema={validationSchema}
           onSubmit={handleSubmit}
@@ -148,13 +162,18 @@ const ResetPasswordWrapper = () => {
                 required
               />
 
-              <Button type="submit" className="w-full" disabled={isResetting || isSubmitting}>
-                {isResetting ? 'Resetting...' : 'Reset Password'}
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={isResetting || isSubmitting}
+              >
+                {isResetting ? "Resetting..." : "Reset Password"}
               </Button>
 
               <div className="text-center">
                 <Text>
-                  Didn't receive the code? <TextLink to={`/forgot-password`}>Resend Code</TextLink>
+                  Didn't receive the code?{" "}
+                  <TextLink to={`/forgot-password`}>Resend Code</TextLink>
                 </Text>
               </div>
             </Form>
@@ -162,7 +181,7 @@ const ResetPasswordWrapper = () => {
         </Formik>
       </div>
     </AuthLayout>
-  )
-}
+  );
+};
 
-export default ResetPasswordWrapper
+export default ResetPasswordWrapper;

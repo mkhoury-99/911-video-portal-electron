@@ -70,11 +70,10 @@ function RefreshIcon({ spinning }) {
 }
 
 // Shared availability logic and button styles for video/audio (used in top languages and list)
-function getAvailability(lang, isReady) {
-  const videoDisabled = (lang?.opted_in_count_video ?? 0) === 0 || !isReady;
+function getAvailability(lang) {
+  const videoDisabled = (lang?.opted_in_count_video ?? 0) === 0;
   const audioDisabled =
     (lang?.opted_in_count_audio ?? 0) === 0 ||
-    !isReady ||
     (lang?.language && lang.language.includes("ASL"));
   return { videoDisabled, audioDisabled };
 }
@@ -161,6 +160,7 @@ export default function LanguagesList() {
   }, []);
 
   useEffect(() => {
+    if (!echo) return;
     const channel = echo.channel("video-status");
     channel.listen(".contact_center.user_status_changed", () => {
       console.log("User status changed");
@@ -409,10 +409,7 @@ export default function LanguagesList() {
           </Heading>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6 gap-2">
             {topLanguages.map((lang) => {
-              const { videoDisabled, audioDisabled } = getAvailability(
-                lang,
-                isReady
-              );
+              const { videoDisabled, audioDisabled } = getAvailability(lang);
               return (
                 <Card key={lang.language} className="border-zinc-200 px-3 py-2">
                   <div className="flex flex-col items-center justify-between gap-2 min-w-0">
@@ -487,10 +484,7 @@ export default function LanguagesList() {
                   </div>
                   <div className="flex items-center gap-3">
                     {(() => {
-                      const { videoDisabled, audioDisabled } = getAvailability(
-                        lang,
-                        isReady
-                      );
+                      const { videoDisabled, audioDisabled } = getAvailability(lang);
                       return (
                         <>
                           <Button

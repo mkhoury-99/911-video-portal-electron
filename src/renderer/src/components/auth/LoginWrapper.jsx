@@ -10,6 +10,7 @@ import { initiate_login, setup_mfa } from '../../api/AuthApi'
 import { Formik, Form, useField } from 'formik'
 import * as Yup from 'yup'
 import { useAuth } from '../../context/AuthContext'
+import { Eye, EyeOff } from 'lucide-react'
 import logo from '../../assets/logo.png'
 // Custom form field component that works with Formik
 const FormField = ({ label, ...props }) => {
@@ -25,10 +26,39 @@ const FormField = ({ label, ...props }) => {
   )
 }
 
+const PasswordField = ({ label, showPassword, onTogglePassword, ...props }) => {
+  const [field, meta] = useField(props)
+  const hasError = meta.touched && meta.error
+
+  return (
+    <Field>
+      <Label>{label}</Label>
+      <div className="relative">
+        <Input
+          {...field}
+          {...props}
+          type={showPassword ? 'text' : 'password'}
+          className={`${hasError ? 'border-red-500' : ''} pr-10`}
+        />
+        <button
+          type="button"
+          onClick={onTogglePassword}
+          className="absolute inset-y-0 right-0 flex items-center pr-3 text-zinc-500 hover:text-zinc-700 cursor-pointer"
+          aria-label={showPassword ? 'Hide password' : 'Show password'}
+        >
+          {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+        </button>
+      </div>
+      {hasError && <ErrorMessage>{meta.error}</ErrorMessage>}
+    </Field>
+  )
+}
+
 const LoginWrapper = () => {
   const { login: authLogin } = useAuth()
   const navigate = useNavigate()
   const [loginError, setLoginError] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
 
   // Validation schema using Yup
   const validationSchema = Yup.object({
@@ -77,11 +107,12 @@ const LoginWrapper = () => {
             <Form className="grid grid-cols-1 gap-6">
               <FormField label="Username" type="text" name="username" placeholder="john.doe" />
 
-              <FormField
+              <PasswordField
                 label="Password"
-                type="password"
                 name="password"
                 placeholder="••••••••••••"
+                showPassword={showPassword}
+                onTogglePassword={() => setShowPassword((prev) => !prev)}
               />
 
               {loginError && <div className="text-red-600 text-sm">{loginError}</div>}

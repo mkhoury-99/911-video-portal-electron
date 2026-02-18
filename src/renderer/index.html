@@ -6,7 +6,7 @@
     <!-- https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP -->
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; connect-src 'self' https: wss:; script-src 'self' 'wasm-unsafe-eval' https://zoom.us https://us01ccistatic.zoom.us https://*.zoom.us; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data:"
+      content="default-src * data: blob: 'unsafe-inline' 'unsafe-eval'; connect-src * data: blob: ws: wss:; script-src * data: blob: 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval'; worker-src * data: blob:; media-src * data: blob:; style-src * 'unsafe-inline'; img-src * data: blob:; font-src * data: blob:"
     />
   </head>
 

@@ -1,7 +1,13 @@
-import { app, shell, BrowserWindow, ipcMain } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, session } from 'electron'
 import { join, resolve } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
+
+// Chromium flags required for the Zoom CCI SDK's WebRTC media pipeline.
+// Must be set before app 'ready' fires.
+app.commandLine.appendSwitch('use-fake-ui-for-media-stream')
+app.commandLine.appendSwitch('enable-usermedia-screen-capturing')
+app.commandLine.appendSwitch('enable-features', 'SharedArrayBuffer,WebRtcHideLocalIpsWithMdns')
 
 /** Main process runs from out/main/index.js; app root is two levels up. */
 function getAppPaths() {
@@ -25,7 +31,9 @@ function createWindow() {
     ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
       preload,
-      sandbox: false
+      sandbox: false,
+      webSecurity: false,
+      allowRunningInsecureContent: true
     }
   })
 
@@ -51,17 +59,22 @@ function createWindow() {
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 app.whenReady().then(() => {
-  // Set app user model id for windows
   electronApp.setAppUserModelId('com.electron')
 
-  // Default open or close DevTools by F12 in development
-  // and ignore CommandOrControl + R in production.
-  // see https://github.com/alex8088/electron-toolkit/tree/master/packages/utils
+  // Grant camera, microphone, and display-capture so the Zoom CCI SDK
+  // can access media devices inside the renderer process.
+  session.defaultSession.setPermissionRequestHandler((_wc, _permission, callback) => {
+    callback(true)
+  })
+
+  session.defaultSession.setPermissionCheckHandler(() => {
+    return true
+  })
+
   app.on('browser-window-created', (_, window) => {
     optimizer.watchWindowShortcuts(window)
   })
 
-  // IPC test
   ipcMain.on('ping', () => console.log('pong'))
 
   createWindow()
